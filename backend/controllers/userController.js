@@ -6,6 +6,11 @@ const createUser = async (req, res) => {
   const { name, email, password, role } = req.body;
 
   try {
+    // Manager sirf employee create kar sakta hai
+    if (req.user.role === 'manager' && role !== 'employee') {
+      return res.status(403).json({ message: 'Managers can only create employees' });
+    }
+
     const userExists = await User.findOne({ email });
     if (userExists) {
       return res.status(400).json({ message: 'User already exists' });
@@ -49,7 +54,7 @@ const updateUser = async (req, res) => {
     user.role = req.body.role || user.role;
 
     if (req.body.password) {
-      user.password = req.body.password; // pre('save') hook automatically hash karega
+      user.password = req.body.password;
     }
 
     const updatedUser = await user.save();

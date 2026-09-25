@@ -45,7 +45,6 @@ const userSchema = new mongoose.Schema(
 );
 
 // Password hash karne se pehle (save hone se pehle chalega)
-// Password hash karne se pehle (save hone se pehle chalega)
 userSchema.pre('save', async function () {
   if (!this.isModified('password')) {
     return;

@@ -1,11 +1,11 @@
 const User = require('../models/user');
 
-// Helper: aaj ki date "YYYY-MM-DD" format mein
+
 const getToday = () => {
   return new Date().toISOString().split('T')[0];
 };
 
-// @desc   Sign In
+
 // @route  POST /api/attendance/signin
 const signIn = async (req, res) => {
   try {
@@ -69,11 +69,15 @@ const getAllAttendance = async (req, res) => {
     const data = users.map((user) => {
       const todayRecord = user.attendance.find((a) => a.date === today);
 
-      let totalHours = 0;
-      if (todayRecord && todayRecord.signInTime && todayRecord.signOutTime) {
-        const diffMs = new Date(todayRecord.signOutTime) - new Date(todayRecord.signInTime);
-        totalHours = (diffMs / (1000 * 60 * 60)).toFixed(2);
-      }
+      let totalHours = '-';
+if (todayRecord && todayRecord.signInTime && todayRecord.signOutTime) {
+  const diffMs = new Date(todayRecord.signOutTime) - new Date(todayRecord.signInTime);
+  const totalMinutes = Math.floor(diffMs / (1000 * 60));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  totalHours = `${hours}h ${minutes}m`;
+}
+
 
       return {
         _id: user._id,
@@ -84,7 +88,7 @@ const getAllAttendance = async (req, res) => {
         totalHours,
       };
     });
-
+    
     res.status(200).json(data);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
