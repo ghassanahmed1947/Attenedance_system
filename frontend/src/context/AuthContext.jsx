@@ -18,7 +18,7 @@ export const AuthProvider = ({ children }) => {
 
     // Role ke mutabiq redirect
     if (userData.role === "employee") navigate("/employee");
-    else if (userData.role === "manager") navigate("/manager");
+   else if (userData.role === "manager") navigate("/manager/home");
     else if (userData.role === "developer") navigate("/developer");
   };
 

@@ -4,24 +4,26 @@ const User = require('./models/user');
 
 dotenv.config();
 
-const createDeveloper = async () => {
+const createManager = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI);
 
-    const existing = await User.findOne({ email: 'developer@test.com' });
+    const email = 'manager@test.com';
+    const existing = await User.findOne({ email });
+
     if (existing) {
-      console.log('Developer already exists!');
+      console.log('Manager already exists!');
       process.exit();
     }
 
     await User.create({
-      name: 'Ghassan',
-      email: 'developer@test.com',
+      name: 'Manager',
+      email,
       password: '123456',
-      role: 'developer',
+      role: 'manager',
     });
 
-    console.log('Developer user created successfully!');
+    console.log('Manager created successfully!');
     process.exit();
   } catch (error) {
     console.error(error);
@@ -29,4 +31,4 @@ const createDeveloper = async () => {
   }
 };
 
-createDeveloper();
+createManager();

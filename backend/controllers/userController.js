@@ -7,10 +7,6 @@ const createUser = async (req, res) => {
 
   try {
     // Manager sirf employee create kar sakta hai
-    if (req.user.role === 'manager' && role !== 'employee') {
-      return res.status(403).json({ message: 'Managers can only create employees' });
-    }
-
     const userExists = await User.findOne({ email });
     if (userExists) {
       return res.status(400).json({ message: 'User already exists' });

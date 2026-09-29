@@ -7,11 +7,14 @@ const ManagerDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const [users, setUsers] = useState([]);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
+    role: "employee",
   });
+  const [editingId, setEditingId] = useState(null);
   const [formError, setFormError] = useState("");
   const [formSuccess, setFormSuccess] = useState("");
 
@@ -26,8 +29,18 @@ const ManagerDashboard = () => {
     }
   };
 
+  const fetchUsers = async () => {
+    try {
+      const { data } = await API.get("/users");
+      setUsers(data);
+    } catch (err) {
+      setFormError(err.response?.data?.message || "Failed to load users");
+    }
+  };
+
   useEffect(() => {
     fetchAttendance();
+    fetchUsers();
   }, []);
 
   const formatTime = (time) => {
@@ -36,32 +49,71 @@ const ManagerDashboard = () => {
   };
 
   const formatDate = (dateStr) => {
-  const [year, month, day] = dateStr.split('-').map(Number);
-  const date = new Date(year, month - 1, day); // local date banate hain, UTC nahi
-  return date.toLocaleDateString([], {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-};
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    return date.toLocaleDateString([], {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  };
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleAddEmployee = async (e) => {
+  const resetForm = () => {
+    setFormData({ name: "", email: "", password: "", role: "employee" });
+    setEditingId(null);
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError("");
     setFormSuccess("");
 
     try {
-      await API.post("/users", { ...formData, role: "employee" });
-      setFormSuccess("Employee added successfully");
-      setFormData({ name: "", email: "", password: "" });
+      if (editingId) {
+        const payload = { ...formData };
+        if (!payload.password) delete payload.password;
+        await API.put(`/users/${editingId}`, payload);
+        setFormSuccess("User updated successfully");
+      } else {
+        await API.post("/users", formData);
+        setFormSuccess("User created successfully");
+      }
+
+      resetForm();
+      fetchUsers();
       fetchAttendance();
     } catch (err) {
-      setFormError(err.response?.data?.message || "Failed to add employee");
+      setFormError(err.response?.data?.message || "Something went wrong");
+    }
+  };
+
+  const handleEdit = (user) => {
+    setFormData({
+      name: user.name,
+      email: user.email,
+      password: "",
+      role: user.role,
+    });
+    setEditingId(user._id);
+    setFormSuccess("");
+    setFormError("");
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this user?")) return;
+
+    try {
+      await API.delete(`/users/${id}`);
+      setFormSuccess("User deleted successfully");
+      fetchUsers();
+      fetchAttendance();
+    } catch (err) {
+      setFormError(err.response?.data?.message || "Failed to delete user");
     }
   };
 
@@ -70,11 +122,13 @@ const ManagerDashboard = () => {
       <Navbar />
 
       <div className="max-w-4xl mx-auto mt-10 space-y-6 pb-10">
-        {/* Add Employee Form */}
+        {/* Create / Edit User Form */}
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Add Employee</h2>
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">
+            {editingId ? "Edit User" : "Create New User"}
+          </h2>
 
-          <form onSubmit={handleAddEmployee} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <input
               type="text"
               name="name"
@@ -98,20 +152,41 @@ const ManagerDashboard = () => {
             <input
               type="password"
               name="password"
-              placeholder="Password"
+              placeholder={editingId ? "New Password (optional)" : "Password"}
               value={formData.password}
               onChange={handleChange}
-              required
+              required={!editingId}
               className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
 
-            <div className="md:col-span-3">
+            <select
+              name="role"
+              value={formData.role}
+              onChange={handleChange}
+              className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="employee">Employee</option>
+              <option value="manager">Manager</option>
+              <option value="developer">Developer</option>
+            </select>
+
+            <div className="md:col-span-2 flex gap-3">
               <button
                 type="submit"
                 className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition"
               >
-                Add Employee
+                {editingId ? "Update User" : "Create User"}
               </button>
+
+              {editingId && (
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="bg-gray-300 text-gray-700 px-6 py-2 rounded-md hover:bg-gray-400 transition"
+                >
+                  Cancel
+                </button>
+              )}
             </div>
           </form>
 
@@ -119,15 +194,56 @@ const ManagerDashboard = () => {
           {formError && <p className="text-red-500 text-sm mt-3">{formError}</p>}
         </div>
 
-{/* Refresh Button */}
-<div className="flex justify-end items-center">
-  <button
-    onClick={fetchAttendance}
-    className="text-sm bg-blue-600 text-white px-4 py-1.5 rounded-md hover:bg-blue-700 transition"
-  >
-    Refresh
-  </button>
-</div>
+        {/* Users List */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">All Users</h2>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b text-sm text-gray-600">
+                  <th className="py-2 px-3">Name</th>
+                  <th className="py-2 px-3">Email</th>
+                  <th className="py-2 px-3">Role</th>
+                  <th className="py-2 px-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((u) => (
+                  <tr key={u._id} className="border-b text-sm">
+                    <td className="py-2 px-3">{u.name}</td>
+                    <td className="py-2 px-3">{u.email}</td>
+                    <td className="py-2 px-3 capitalize">{u.role}</td>
+                    <td className="py-2 px-3 flex gap-2">
+                      <button
+                        onClick={() => handleEdit(u)}
+                        className="text-blue-600 hover:underline text-xs"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(u._id)}
+                        className="text-red-500 hover:underline text-xs"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Refresh Button */}
+        <div className="flex justify-end items-center">
+          <button
+            onClick={fetchAttendance}
+            className="text-sm bg-blue-600 text-white px-4 py-1.5 rounded-md hover:bg-blue-700 transition"
+          >
+            Refresh
+          </button>
+        </div>
 
         {error && <p className="text-red-500 text-sm">{error}</p>}
 

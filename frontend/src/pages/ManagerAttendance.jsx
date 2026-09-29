@@ -4,7 +4,7 @@ import Navbar from "../components/Navbar";
 
 const COMPLETION_WINDOW_HOURS = 9;
 
-const EmployeeDashboard = () => {
+const ManagerAttendance = () => {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [signInTime, setSignInTime] = useState(null);
@@ -33,7 +33,6 @@ const EmployeeDashboard = () => {
 
   const withinCompletionWindow = signOutTime && hoursSinceSignOut < COMPLETION_WINDOW_HOURS;
 
-  // Jab tak completion window khatam na ho, wapas auto-check karne ke liye
   useEffect(() => {
     if (withinCompletionWindow) {
       const remainingMs = (COMPLETION_WINDOW_HOURS - hoursSinceSignOut) * 60 * 60 * 1000;
@@ -72,7 +71,6 @@ const EmployeeDashboard = () => {
   return (
     <div className="min-h-screen bg-gray-100">
       <Navbar />
-
       <div className="flex flex-col items-center justify-center mt-20">
         <div className="bg-white p-8 rounded-lg shadow-md text-center space-y-4 w-full max-w-sm">
           <h2 className="text-xl font-semibold text-gray-800">Mark Attendance</h2>
@@ -119,4 +117,4 @@ const EmployeeDashboard = () => {
   );
 };
 
-export default EmployeeDashboard;
+export default ManagerAttendance;
