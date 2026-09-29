@@ -3,7 +3,7 @@ import API from "../api/axios";
 import Navbar from "../components/Navbar";
 
 const ManagerDashboard = () => {
-  const [attendance, setAttendance] = useState([]);
+  const [attendanceByDate, setAttendanceByDate] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -18,7 +18,7 @@ const ManagerDashboard = () => {
   const fetchAttendance = async () => {
     try {
       const { data } = await API.get("/attendance");
-      setAttendance(data);
+      setAttendanceByDate(data);
     } catch (err) {
       setError(err.response?.data?.message || "Failed to load attendance");
     } finally {
@@ -34,6 +34,17 @@ const ManagerDashboard = () => {
     if (!time) return "-";
     return new Date(time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
+
+  const formatDate = (dateStr) => {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const date = new Date(year, month - 1, day); // local date banate hain, UTC nahi
+  return date.toLocaleDateString([], {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+};
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -108,67 +119,72 @@ const ManagerDashboard = () => {
           {formError && <p className="text-red-500 text-sm mt-3">{formError}</p>}
         </div>
 
-        {/* Attendance Table */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-gray-800">
-              Employee Attendance
-            </h2>
-            <button
-              onClick={fetchAttendance}
-              className="text-sm bg-blue-600 text-white px-4 py-1.5 rounded-md hover:bg-blue-700 transition"
-            >
-              Refresh
-            </button>
+{/* Refresh Button */}
+<div className="flex justify-end items-center">
+  <button
+    onClick={fetchAttendance}
+    className="text-sm bg-blue-600 text-white px-4 py-1.5 rounded-md hover:bg-blue-700 transition"
+  >
+    Refresh
+  </button>
+</div>
+
+        {error && <p className="text-red-500 text-sm">{error}</p>}
+
+        {loading ? (
+          <p className="text-gray-500 text-sm">Loading...</p>
+        ) : (
+          <div className="space-y-6">
+            {attendanceByDate.map((day) => (
+              <div key={day.date} className="bg-white rounded-lg shadow-md p-6">
+                <h3 className="text-md font-semibold text-gray-700 mb-3">
+                  {formatDate(day.date)}
+                </h3>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b text-sm text-gray-600">
+                        <th className="py-2 px-3">Name</th>
+                        <th className="py-2 px-3">Attendance</th>
+                        <th className="py-2 px-3">Sign In</th>
+                        <th className="py-2 px-3">Sign Out</th>
+                        <th className="py-2 px-3">Total Hours</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {day.records.map((emp) => (
+                        <tr key={emp._id} className="border-b text-sm">
+                          <td className="py-2 px-3">{emp.name}</td>
+                          <td className="py-2 px-3">
+                            <span
+                              className={`px-2 py-0.5 rounded text-xs font-medium ${
+                                emp.attendance === "P"
+                                  ? "bg-green-100 text-green-700"
+                                  : "bg-red-100 text-red-700"
+                              }`}
+                            >
+                              {emp.attendance}
+                            </span>
+                          </td>
+                          <td className="py-2 px-3">{formatTime(emp.signInTime)}</td>
+                          <td className="py-2 px-3">{formatTime(emp.signOutTime)}</td>
+                          <td className="py-2 px-3">{emp.totalHours}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  {day.records.length === 0 && (
+                    <p className="text-gray-500 text-sm mt-2 text-center">
+                      No employees found.
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
-
-          {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
-
-          {loading ? (
-            <p className="text-gray-500 text-sm">Loading...</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b text-sm text-gray-600">
-                    <th className="py-2 px-3">Name</th>
-                    <th className="py-2 px-3">Attendance</th>
-                    <th className="py-2 px-3">Sign In</th>
-                    <th className="py-2 px-3">Sign Out</th>
-                    <th className="py-2 px-3">Total Hours</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {attendance.map((emp) => (
-                    <tr key={emp._id} className="border-b text-sm">
-                      <td className="py-2 px-3">{emp.name}</td>
-                      <td className="py-2 px-3">
-                        <span
-                          className={`px-2 py-0.5 rounded text-xs font-medium ${
-                            emp.attendance === "P"
-                              ? "bg-green-100 text-green-700"
-                              : "bg-red-100 text-red-700"
-                          }`}
-                        >
-                          {emp.attendance}
-                        </span>
-                      </td>
-                      <td className="py-2 px-3">{formatTime(emp.signInTime)}</td>
-                      <td className="py-2 px-3">{formatTime(emp.signOutTime)}</td>
-                      <td className="py-2 px-3">{emp.totalHours || "-"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              {attendance.length === 0 && (
-                <p className="text-gray-500 text-sm mt-4 text-center">
-                  No employees found.
-                </p>
-              )}
-            </div>
-          )}
-        </div>
+        )}
       </div>
     </div>
   );
