@@ -105,7 +105,7 @@ const ManagerDashboard = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this user?")) return;
+    if (alert("Are you sure you want to delete this user?")) return;
 
     try {
       await API.delete(`/users/${id}`);

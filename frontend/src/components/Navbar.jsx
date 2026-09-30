@@ -1,46 +1,3 @@
-// import { NavLink } from "react-router-dom";
-// import { useAuth } from "../context/AuthContext";
-
-// const Navbar = () => {
-//   const { user, logout } = useAuth();
-
-//   const tabClass = ({ isActive }) =>
-//     `px-3 py-1.5 rounded-md text-sm font-medium transition ${
-//       isActive ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-200"
-//     }`;
-
-//   return (
-//     <nav className="bg-white shadow-md px-6 py-4">
-//       <div className="flex justify-between items-center">
-//         <div>
-//           <h1 className="text-lg font-semibold text-gray-800">Attendance System</h1>
-//           <p className="text-sm text-gray-500">
-//             Welcome, <span className="font-medium">{user?.name}</span> ({user?.role})
-//           </p>
-//         </div>
-
-//         <button
-//           onClick={logout}
-//           className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 transition"
-//         >
-//           Log Out
-//         </button>
-//       </div>
-
-//       {user?.role === "manager" && (
-//         <div className="flex gap-2 mt-4">
-//           <NavLink to="/manager/home" className={tabClass}>Home</NavLink>
-//           <NavLink to="/manager/records" className={tabClass}>Records</NavLink>
-//           <NavLink to="/manager/create-user" className={tabClass}>Create User</NavLink>
-//           <NavLink to="/manager/attendance" className={tabClass}>Self Attendance</NavLink>
-//         </div>
-//       )}
-//     </nav>
-//   );
-// };
-
-// export default Navbar;
-
 
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -49,21 +6,20 @@ const Navbar = () => {
   const { user, logout } = useAuth();
 
   const tabClass = ({ isActive }) =>
-    `relative px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+    `px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap ${
       isActive
         ? "bg-blue-600 text-white shadow-sm"
         : "text-gray-600 hover:text-blue-600 hover:bg-blue-50"
     }`;
 
   return (
-    <nav className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-500">
+    <nav className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-        {/* Top Section */}
-        <div className="flex items-center justify-between py-4">
+        <div className="flex items-center justify-between min-h-[76px]">
 
-          {/* Brand + User Info */}
-          <div className="flex items-center gap-4">
+          {/* LEFT - Logo + User */}
+          <div className="flex items-center gap-3 min-w-fit">
 
             {/* Logo */}
             <div className="hidden sm:flex h-11 w-11 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
@@ -88,7 +44,7 @@ const Navbar = () => {
                 HRPulse
               </h1>
 
-              <div className="flex items-center gap-2 mt-0.5">
+              <div className="flex items-center gap-2">
                 <p className="text-sm text-gray-500">
                   Welcome,{" "}
                   <span className="font-semibold text-gray-700">
@@ -96,7 +52,6 @@ const Navbar = () => {
                   </span>
                 </p>
 
-                {/* Role Badge */}
                 <span className="hidden sm:inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-600 capitalize">
                   {user?.role}
                 </span>
@@ -104,7 +59,42 @@ const Navbar = () => {
             </div>
           </div>
 
-          {/* Logout */}
+          {/* CENTER - Navigation Tabs */}
+          {user?.role === "manager" && (
+            <div className="hidden md:flex items-center gap-1 absolute left-1/2 -translate-x-1/2">
+
+              <NavLink
+                to="/manager/home"
+                className={tabClass}
+              >
+                Home
+              </NavLink>
+
+              <NavLink
+                to="/manager/records"
+                className={tabClass}
+              >
+                Records
+              </NavLink>
+
+              <NavLink
+                to="/manager/create-user"
+                className={tabClass}
+              >
+                Create User
+              </NavLink>
+
+              <NavLink
+                to="/manager/attendance"
+                className={tabClass}
+              >
+                Self Attendance
+              </NavLink>
+
+            </div>
+          )}
+
+          {/* RIGHT - Logout */}
           <button
             onClick={logout}
             className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-600 transition-all duration-200 hover:bg-red-500 hover:text-white hover:border-red-500"
@@ -124,32 +114,34 @@ const Navbar = () => {
               />
             </svg>
 
-            <span className="hidden sm:inline">Log Out</span>
+            <span className="hidden sm:inline">
+              Log Out
+            </span>
           </button>
+
         </div>
 
-        {/* Navigation */}
+        {/* Mobile Navigation */}
         {user?.role === "manager" && (
-          <div className="flex items-center gap-1 overflow-x-auto border-t border-gray-100 py-3">
-
+          <div className="md:hidden flex items-center gap-1 overflow-x-auto pb-3">
             <NavLink to="/manager/home" className={tabClass}>
-               <span className="ml-1">Home</span>
+              Home
             </NavLink>
 
             <NavLink to="/manager/records" className={tabClass}>
-               <span className="ml-1">Records</span>
+              Records
             </NavLink>
 
             <NavLink to="/manager/create-user" className={tabClass}>
-               <span className="ml-1">Create User</span>
+              Create User
             </NavLink>
 
             <NavLink to="/manager/attendance" className={tabClass}>
-               <span className="ml-1">Self Attendance</span>
+              Self Attendance
             </NavLink>
-
           </div>
         )}
+
       </div>
     </nav>
   );
