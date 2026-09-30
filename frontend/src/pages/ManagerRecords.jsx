@@ -103,9 +103,6 @@ const ManagerRecords = () => {
               </button>
             </div>
           </form>
-          <p className="text-xs text-gray-400 mt-3">
-            Sab khali chhodein to aaj ka din dikhega. Sirf Start Date bharein to sirf usi din ka data. Sirf Name bharein to us employee ki poori history.
-          </p>
         </div>
 
         {error && <p className="text-red-500 text-sm">{error}</p>}

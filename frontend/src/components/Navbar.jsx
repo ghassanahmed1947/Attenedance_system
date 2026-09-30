@@ -85,7 +85,7 @@ const Navbar = () => {
 
             <div>
               <h1 className="text-lg sm:text-xl font-bold text-gray-900">
-                Attendance System
+                HRPulse
               </h1>
 
               <div className="flex items-center gap-2 mt-0.5">
