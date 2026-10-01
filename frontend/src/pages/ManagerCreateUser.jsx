@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import API from "../api/axios";
 import Navbar from "../components/Navbar";
+import ConfirmModal from "../components/ConfirmModal";
 
 const ManagerCreateUser = () => {
   const [users, setUsers] = useState([]);
@@ -8,6 +9,7 @@ const ManagerCreateUser = () => {
   const [editingId, setEditingId] = useState(null);
   const [formError, setFormError] = useState("");
   const [formSuccess, setFormSuccess] = useState("");
+    const [deleteTarget, setDeleteTarget] = useState(null);
 
   const fetchUsers = async () => {
     try {
@@ -60,8 +62,13 @@ const ManagerCreateUser = () => {
     setFormError("");
   };
 
-  const handleDelete = async (id) => {
-    if (alert("Are you sure you want to delete this user?")) return;
+   const handleDeleteClick = (user) => {
+    setDeleteTarget(user);
+  };
+
+  const confirmDelete = async () => {
+    const id = deleteTarget._id;
+    setDeleteTarget(null);
     try {
       await API.delete(`/users/${id}`);
       setFormSuccess("User deleted successfully");
@@ -147,7 +154,7 @@ const ManagerCreateUser = () => {
                     <td className="py-3 px-4">{roleBadge(u.role)}</td>
                     <td className="py-3 px-4 flex gap-3">
                       <button onClick={() => handleEdit(u)} className="text-blue-600 hover:underline text-xs font-medium">Edit</button>
-                      <button onClick={() => handleDelete(u._id)} className="text-red-500 hover:underline text-xs font-medium">Delete</button>
+                                            <button onClick={() => handleDeleteClick(u)} className="text-red-500 hover:underline text-xs font-medium">Delete</button>
                     </td>
                   </tr>
                 ))}
@@ -155,10 +162,20 @@ const ManagerCreateUser = () => {
             </table>
           </div>
         </div>
-      </div>
+           </div>
+
+      <ConfirmModal
+        isOpen={!!deleteTarget}
+        title="Delete User"
+        message={`Are you sure you want to delete ${deleteTarget?.name}? This cannot be undone.`}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 };
+
+
 
 export default ManagerCreateUser;
 

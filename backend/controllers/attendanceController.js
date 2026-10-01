@@ -9,6 +9,13 @@ const getToday = (date = new Date()) => {
   return `${year}-${month}-${day}`;
 };
 
+const isWeekend = (dateStr) => {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const d = new Date(year, month - 1, day);
+  const dow = d.getDay();
+  return dow === 0 || dow === 6;
+};
+
 const autoSignOutIfExpired = async (user) => {
   let updated = false;
   const limitMs = AUTO_SIGNOUT_HOURS * 60 * 60 * 1000;
@@ -34,13 +41,49 @@ const calculateHours = (record) => {
     const totalMinutes = Math.floor(diffMs / (1000 * 60));
     const hours = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes % 60;
-    return `${hours}h ${minutes}m`;
+    return { text: `${hours}h ${minutes}m`, minutes: totalMinutes };
   }
-  return '-';
+  return { text: '-', minutes: 0 };
 };
 
-// @desc   Sign In
-// @route  POST /api/attendance/signin
+const formatTotalHours = (totalMinutes) => {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${hours}h ${minutes}m`;
+};
+
+const getDateRange = (start, end) => {
+  const dates = [];
+  let d = new Date(start);
+  const endD = new Date(end);
+  while (d <= endD) {
+    dates.push(getToday(d));
+    d.setDate(d.getDate() + 1);
+  }
+  return dates;
+};
+
+const getStatusForDate = (record, dateStr) => {
+  if (record) return 'P';
+  if (isWeekend(dateStr)) return 'H';
+  return 'A';
+};
+
+const formatMonthLabel = (dates) => {
+  if (dates.length === 0) return '';
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const parse = (d) => {
+    const [y, m] = d.split('-').map(Number);
+    return { y, m };
+  };
+  const first = parse(dates[0]);
+  const last = parse(dates[dates.length - 1]);
+  if (first.y === last.y && first.m === last.m) {
+    return `${monthNames[first.m - 1]} ${first.y}`;
+  }
+  return `${monthNames[first.m - 1]} ${first.y} – ${monthNames[last.m - 1]} ${last.y}`;
+};
+
 const signIn = async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
@@ -63,8 +106,6 @@ const signIn = async (req, res) => {
   }
 };
 
-// @desc   Sign Out
-// @route  POST /api/attendance/signout
 const signOut = async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
@@ -90,70 +131,6 @@ const signOut = async (req, res) => {
   }
 };
 
-// @desc   Get attendance records with optional name/date filters (for Manager)
-// @route  GET /api/attendance/records?name=&start=&end=
-const getRecords = async (req, res) => {
-  try {
-    let { name, start, end } = req.query;
-
-    const userQuery = { role: { $in: ['employee', 'manager'] } };
-    if (name) {
-      userQuery.name = { $regex: name, $options: 'i' };
-    }
-
-    const users = await User.find(userQuery);
-
-    for (const user of users) {
-      await autoSignOutIfExpired(user);
-    }
-
-    // Sirf start diya ho to usko single-date query maan lo
-    if (start && !end) end = start;
-
-    let dates = [];
-
-    if (start && end) {
-      let d = new Date(start);
-      const endD = new Date(end);
-      while (d <= endD) {
-        dates.push(getToday(d));
-        d.setDate(d.getDate() + 1);
-      }
-      dates.reverse();
-    } else if (name) {
-      const dateSet = new Set();
-      users.forEach((u) => u.attendance.forEach((a) => dateSet.add(a.date)));
-      dates = Array.from(dateSet).sort((a, b) => b.localeCompare(a));
-    } else {
-      dates = [getToday()];
-    }
-
-    const result = dates
-      .map((date) => {
-        const records = users.map((user) => {
-          const record = user.attendance.find((a) => a.date === date);
-          return {
-            _id: user._id,
-            name: user.name,
-            attendance: record ? record.status : 'A',
-            signInTime: record?.signInTime || null,
-            signOutTime: record?.signOutTime || null,
-            totalHours: calculateHours(record),
-          };
-        });
-        return { date, records };
-      })
-      .filter((day) => day.records.some((r) => r.signInTime));
-
-    res.status(200).json(result);
-  } catch (error) {
-    console.error('GET RECORDS ERROR:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-};
-
-// @desc   Get today's sign-in/out status for logged-in user
-// @route  GET /api/attendance/status
 const getStatus = async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
@@ -172,4 +149,135 @@ const getStatus = async (req, res) => {
   }
 };
 
-module.exports = { signIn, signOut, getRecords , getStatus };
+const getRecords = async (req, res) => {
+  try {
+    const { employeeId, start, end } = req.query;
+
+    if (employeeId) {
+      const user = await User.findById(employeeId);
+      if (!user) {
+        return res.status(404).json({ message: 'Employee not found' });
+      }
+      await autoSignOutIfExpired(user);
+
+      let dates;
+      if (start && end) {
+        dates = getDateRange(start, end);
+      } else {
+        dates = Array.from(new Set(user.attendance.map((a) => a.date))).sort();
+      }
+
+      let totalPresent = 0;
+      let totalAbsent = 0;
+      let totalHolidays = 0;
+      let totalMinutes = 0;
+
+      const records = dates.map((date) => {
+        const record = user.attendance.find((a) => a.date === date);
+        const hours = calculateHours(record);
+        const status = getStatusForDate(record, date);
+
+        if (status === 'P') totalPresent += 1;
+        else if (status === 'A') totalAbsent += 1;
+        else if (status === 'H') totalHolidays += 1;
+
+        totalMinutes += hours.minutes;
+
+        return {
+          date,
+          attendance: status,
+          signInTime: record?.signInTime || null,
+          signOutTime: record?.signOutTime || null,
+          totalHours: hours.text,
+        };
+      });
+
+      const totalWorkingDays = totalPresent + totalAbsent;
+
+      return res.status(200).json({
+        mode: 'single',
+        employee: { id: user._id, name: user.name, role: user.role },
+        records,
+        summary: {
+          totalWorkingDays,
+          totalPresent,
+          totalAbsent,
+          totalHolidays,
+          totalHours: formatTotalHours(totalMinutes),
+        },
+      });
+    }
+
+    const users = await User.find({ role: { $in: ['employee', 'manager', 'developer'] } });
+
+    for (const u of users) {
+      await autoSignOutIfExpired(u);
+    }
+
+    let dates;
+    if (start && end) {
+      dates = getDateRange(start, end);
+    } else {
+      dates = [getToday()];
+    }
+
+    if (dates.length <= 1) {
+      const date = dates[0];
+      const records = users
+        .map((user) => {
+          const record = user.attendance.find((a) => a.date === date);
+          const hours = calculateHours(record);
+          return {
+            _id: user._id,
+            name: user.name,
+            role: user.role,
+            attendance: getStatusForDate(record, date),
+            signInTime: record?.signInTime || null,
+            signOutTime: record?.signOutTime || null,
+            totalHours: hours.text,
+          };
+        })
+        .filter((r) => r.attendance !== 'H' || r.signInTime);
+
+      return res.status(200).json({
+        mode: 'all-simple',
+        date,
+        records,
+      });
+    }
+
+    const sortedDatesAsc = [...dates].sort((a, b) => a.localeCompare(b));
+
+    const rows = sortedDatesAsc.map((date) => {
+      const cells = {};
+      users.forEach((user) => {
+        const record = user.attendance.find((a) => a.date === date);
+        cells[user._id] = getStatusForDate(record, date);
+      });
+      return { date, cells };
+    });
+
+    const totalsByUser = {};
+    users.forEach((user) => {
+      let totalMinutes = 0;
+      dates.forEach((date) => {
+        const record = user.attendance.find((a) => a.date === date);
+        totalMinutes += calculateHours(record).minutes;
+      });
+      totalsByUser[user._id] = formatTotalHours(totalMinutes);
+    });
+
+    res.status(200).json({
+      mode: 'all-matrix',
+      monthLabel: formatMonthLabel(sortedDatesAsc),
+      employees: users.map((u) => ({ id: u._id, name: u.name, role: u.role })),
+      rows,
+      totals: totalsByUser,
+    });
+  } catch (error) {
+    console.error('GET RECORDS ERROR:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+module.exports = { signIn, signOut, getRecords, getStatus };
